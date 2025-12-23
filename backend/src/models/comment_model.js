@@ -11,15 +11,31 @@
 // };
 
 
-const { Comment } = require("../utils/connection");
+const { Comment, Blog } = require("../utils/connection");
 
 module.exports = {
-  addComment: (data) => Comment.create(data),
+  // addComment: (data) => Comment.create(data),
+  addComment: async (data) => {
+    const comment = await Comment.create(data);
+
+    // ✅ increment only for direct comments
+    if (!data.parentCommentId) {
+      await Blog.findByIdAndUpdate(data.postId, {
+        $inc: { commentsCount: 1 }
+      });
+    }
+
+    return comment;
+  },
 
   getCommentsByPost: (postId) =>
     Comment.find({ postId, isDeleted: false }),
 
-  replyToComment: (data) => Comment.create(data),
+  // replyToComment: (data) => Comment.create(data),
+  replyToComment: async (data) => {
+    // replies are also comments, but DO NOT increase count
+    return Comment.create(data);
+  },
 
   upvoteComment: (commentId) =>
     Comment.findByIdAndUpdate(
@@ -35,10 +51,28 @@ module.exports = {
       { new: true }
     ),
 
-  deleteComment: (commentId) =>
-    Comment.findByIdAndUpdate(
+  // deleteComment: (commentId) =>
+  //   Comment.findByIdAndUpdate(
+  //     commentId,
+  //     { isDeleted: true },
+  //     { new: true }
+  //   )
+
+  deleteComment: async (commentId) => {
+    const comment = await Comment.findByIdAndUpdate(
       commentId,
       { isDeleted: true },
       { new: true }
-    )
+    );
+
+    // ✅ decrement count only if it was a direct comment
+    if (comment && !comment.parentCommentId) {
+      await Blog.findByIdAndUpdate(comment.postId, {
+        $inc: { commentsCount: -1 }
+      });
+    }
+
+    return comment;
+  }
+
 };

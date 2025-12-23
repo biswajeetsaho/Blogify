@@ -25,8 +25,16 @@
 const commentModel = require("../models/comment_model");
 
 module.exports = {
+  // createComment: async (data) => {
+  //   if (!data.content) throw new Error("Comment content required");
+  //   return await commentModel.addComment(data);
+  // },
+
   createComment: async (data) => {
-    if (!data.content) throw new Error("Comment content required");
+    if (!data.content) {
+      throw new Error("Comment content required");
+    }
+
     return await commentModel.addComment(data);
   },
 
@@ -34,7 +42,14 @@ module.exports = {
     return await commentModel.getCommentsByPost(postId);
   },
 
+  // reply: async (data) => {
+  //   return await commentModel.replyToComment(data);
+  // },
   reply: async (data) => {
+    if (!data.content || !data.parentCommentId) {
+      throw new Error("Reply content and parentCommentId required");
+    }
+
     return await commentModel.replyToComment(data);
   },
 

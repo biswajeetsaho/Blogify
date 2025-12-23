@@ -5,19 +5,49 @@ const {
   getAllBlogsService,
   updateBlogService,
   deleteBlogService,
-  searchBlogService
+  searchBlogService,
+  fetchCategoriesService,
+  fetchTagsService,
+  likeBlogService
 } = require("../services/blog_service");
+const upload = require("../middlewares/upload_middleware");
 
 const router = express.Router();
 
-router.post("/", authMiddleware, async (req, res) => {
-  try {
-    const blog = await createBlogService(req.body, req.userId);
-    res.status(201).json(blog);
-  } catch (err) {
-    res.status(400).json({ error: err.message });
+// router.post("/", authMiddleware, async (req, res) => {
+//   try {
+//     const blog = await createBlogService(req.body, req.userId);
+//     res.status(201).json(blog);
+//   } catch (err) {
+//     res.status(400).json({ error: err.message });
+//   }
+// });
+
+router.post(
+  "/",
+  authMiddleware,
+  upload.array("media", 5),
+  async (req, res) => {
+    try {
+      const mediaFiles = req.files.map(file => ({
+        fileType: file.mimetype.startsWith("image") ? "image" : "video",
+        filePath: `/uploads/${file.filename}`
+      }));
+
+      const blog = await createBlogService(
+        {
+          ...req.body,
+          media: mediaFiles
+        },
+        req.userId
+      );
+
+      res.status(201).json(blog);
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
   }
-});
+);
 
 router.get("/", async (req, res) => {
   const blogs = await getAllBlogsService();
@@ -52,6 +82,30 @@ router.get("/search", async (req, res) => {
   res.json(results);
 });
 
+/* GET ALL CATEGORIES */
+router.get("/categories/all", async (req, res) => {
+  try {
+    const categories = await fetchCategoriesService();
+    res.json(categories);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/* GET ALL TAGS */
+router.get("/tags/all", async (req, res) => {
+  try {
+    const tags = await fetchTagsService();
+    res.json(tags);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put("/:id/like", authMiddleware, async (req, res) => {
+  const blog = await likeBlogService(req.params.id, req.userId);
+  res.json(blog);
+});
 
 
 module.exports = router;

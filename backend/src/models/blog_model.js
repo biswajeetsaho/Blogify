@@ -21,9 +21,38 @@ const searchPosts = (query) => {
       { title: { $regex: searchString, $options: "i" } },
       { categories: searchString },
       { tags: searchString }
-    ]
+    ] 
   });
 };
+
+/* GET ALL UNIQUE CATEGORIES */
+const getAllCategoriesFromBlogs = () => {
+  return Blog.aggregate([
+    { $unwind: "$categories" },
+    { $group: { _id: "$categories" } }
+  ]);
+};
+
+/* GET ALL UNIQUE TAGS */
+const getAllTagsFromBlogs = () => {
+  return Blog.aggregate([
+    { $unwind: "$tags" },
+    { $group: { _id: "$tags" } }
+  ]);
+};
+
+const likeBlog = (blogId, userId) => {
+  return Blog.findByIdAndUpdate(
+    blogId,
+    {
+      $addToSet: { likedUsers: userId },
+      $inc: { likesCount: 1 }
+    },
+    { new: true }
+  );
+};
+
+
 
 
 module.exports = {
@@ -31,5 +60,8 @@ module.exports = {
   getAllBlogs,
   updateBlogById,
   deleteBlogById,
-  searchPosts
+  searchPosts,
+  getAllCategoriesFromBlogs,
+  getAllTagsFromBlogs,
+  likeBlog
 };

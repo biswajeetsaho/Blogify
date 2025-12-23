@@ -1,4 +1,4 @@
-const { createBlog, getAllBlogs,updateBlogById,deleteBlogById,searchPosts } = require("../models/blog_model");
+const { createBlog, getAllBlogs,updateBlogById,deleteBlogById,searchPosts,getAllCategoriesFromBlogs,getAllTagsFromBlogs,likeBlog } = require("../models/blog_model");
 
 const createBlogService = async (data, userId) => {
   if (!data.title || !data.content) {
@@ -30,10 +30,28 @@ const searchBlogService = async (query) => {
   return await searchPosts(query);
 };
 
+const fetchCategoriesService = async () => {
+  const categories = await getAllCategoriesFromBlogs();
+  return categories.map(c => c._id);
+};
+
+const fetchTagsService = async () => {
+  const tags = await getAllTagsFromBlogs();
+  return tags.map(t => t._id);
+};
+
+const likeBlogService = async (blogId, userId) => {
+  return likeBlog(blogId, userId);
+};
+
+
 module.exports = {
   createBlogService,
   getAllBlogsService,
   updateBlogService,
   deleteBlogService,
-  searchBlogService
+  searchBlogService,
+  fetchCategoriesService,
+  fetchTagsService,
+  likeBlogService
 };

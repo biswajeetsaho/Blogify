@@ -20,16 +20,79 @@ const userSchema = new mongoose.Schema(
 );
 
 /* BLOG SCHEMA */
+// const blogSchema = new mongoose.Schema(
+//   {
+//     title: { type: String, required: true },
+//     content: { type: String, required: true },
+//     categories: [String],
+//     tags: [String],
+//     author: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+//   },
+//   { timestamps: true }
+// );
+
 const blogSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
-    content: { type: String, required: true },
-    categories: [String],
-    tags: [String],
-    author: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+    title: {
+      type: String,
+      required: true
+    },
+
+    content: {
+      type: String,
+      required: true
+    },
+
+    categories: {
+      type: [String],
+      default: []
+    },
+
+    tags: {
+      type: [String],
+      default: []
+    },
+
+    /* 🔹 MULTIMEDIA */
+    media: [
+      {
+        fileType: {
+          type: String, // "image" | "video"
+          enum: ["image", "video"]
+        },
+        filePath: {
+          type: String // stored file path / URL
+        }
+      }
+    ],
+
+    /* 🔹 LIKES */
+    likesCount: {
+      type: Number,
+      default: 0
+    },
+
+    likedUsers: {
+      type: [mongoose.Schema.Types.ObjectId],
+      ref: "User",
+      default: []
+    },
+
+    /* 🔹 COMMENTS COUNT (DIRECT ONLY) */
+    commentsCount: {
+      type: Number,
+      default: 0
+    },
+
+    author: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    }
   },
   { timestamps: true }
 );
+
 
 /* CATEGORY SCHEMA */
 const categorySchema = new mongoose.Schema(
