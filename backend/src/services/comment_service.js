@@ -1,50 +1,34 @@
-// const {
-//     createComment,
-//     getCommentsByBlogId
-//   } = require("../models/comment_model");
-  
-//   const addCommentService = async (content, blogId, userId) => {
-//     if (!content) throw new Error("Comment cannot be empty");
-  
-//     return createComment({
-//       content,
-//       blogId,
-//       userId
-//     });
-//   };
-  
-//   const getCommentsService = async (blogId) => {
-//     return getCommentsByBlogId(blogId);
-//   };
-  
-//   module.exports = {
-//     addCommentService,
-//     getCommentsService
-//   };
-  
+
 const commentModel = require("../models/comment_model");
 
+const extractMentions = (content) => {
+  const regex = /@(\w+)/g;
+  return [...content.matchAll(regex)].map(m => m[1]);
+};
+
 module.exports = {
-  // createComment: async (data) => {
-  //   if (!data.content) throw new Error("Comment content required");
-  //   return await commentModel.addComment(data);
-  // },
 
   createComment: async (data) => {
-    if (!data.content) {
+    // ✅ validation (keep this)
+    if (!data.content || !data.content.trim()) {
       throw new Error("Comment content required");
     }
-
-    return await commentModel.addComment(data);
-  },
+  
+    // ✅ extract @mentions
+    const mentions = extractMentions(data.content);
+    // e.g. ["rahul", "john"]
+  
+    return await commentModel.addComment({
+      ...data,
+      mentions
+    });
+  },  
 
   getPostComments: async (postId) => {
     return await commentModel.getCommentsByPost(postId);
   },
 
-  // reply: async (data) => {
-  //   return await commentModel.replyToComment(data);
-  // },
+  
   reply: async (data) => {
     if (!data.content || !data.parentCommentId) {
       throw new Error("Reply content and parentCommentId required");

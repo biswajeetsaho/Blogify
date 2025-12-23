@@ -13,23 +13,42 @@ const connectDB = async () => {
 /* USER SCHEMA */
 const userSchema = new mongoose.Schema(
   {
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true }
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true
+    },
+
+    email: {
+      type: String,
+      required: true,
+      unique: true
+    },
+
+    password: {
+      type: String,
+      required: true
+    },
+
+    friends: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+    ],
+
+    sentFriendRequests: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+    ],
+
+    receivedFriendRequests: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+    ]
   },
   { timestamps: true }
 );
 
+
+
 /* BLOG SCHEMA */
-// const blogSchema = new mongoose.Schema(
-//   {
-//     title: { type: String, required: true },
-//     content: { type: String, required: true },
-//     categories: [String],
-//     tags: [String],
-//     author: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
-//   },
-//   { timestamps: true }
-// );
 
 const blogSchema = new mongoose.Schema(
   {
