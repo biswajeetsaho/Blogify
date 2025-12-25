@@ -1,4 +1,4 @@
-const { createBlog, getAllBlogs,updateBlogById,deleteBlogById,searchPosts,getAllCategoriesFromBlogs,getAllTagsFromBlogs,likeBlog } = require("../models/blog_model");
+const { createBlog, getAllBlogs, updateBlogById, deleteBlogById, searchPosts, getAllCategoriesFromBlogs, getAllTagsFromBlogs, likeBlog } = require("../models/blog_model");
 
 const createBlogService = async (data, userId) => {
   if (!data.title || !data.content) {
@@ -32,12 +32,14 @@ const searchBlogService = async (query) => {
 
 const fetchCategoriesService = async () => {
   const categories = await getAllCategoriesFromBlogs();
-  return categories.map(c => c._id);
+  // Map to match frontend Category interface { _id, name }
+  return categories.map(c => ({ _id: c._id, name: c._id }));
 };
 
 const fetchTagsService = async () => {
   const tags = await getAllTagsFromBlogs();
-  return tags.map(t => t._id);
+  // Map to match frontend Tag interface { _id, name }
+  return tags.map(t => ({ _id: t._id, name: t._id }));
 };
 
 const likeBlogService = async (blogId, userId) => {

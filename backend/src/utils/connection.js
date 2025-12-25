@@ -56,7 +56,10 @@ const blogSchema = new mongoose.Schema(
       type: String,
       required: true
     },
-
+    subtitle: {
+      type: String,
+      default: ""
+    },
     content: {
       type: String,
       required: true
@@ -131,22 +134,7 @@ const tagSchema = new mongoose.Schema(
 
 /* COMMENT SCHEMA */
 
-// const commentSchema = new mongoose.Schema(
-//   {
-//     content: { type: String, required: true },
-//     blogId: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "Blog",
-//       required: true
-//     },
-//     userId: {
-//       type: mongoose.Schema.Types.ObjectId,
-//       ref: "User",
-//       required: true
-//     }
-//   },
-//   { timestamps: true }
-// );
+
 
 const commentSchema = new mongoose.Schema({
   postId: {

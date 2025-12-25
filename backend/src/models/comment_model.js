@@ -29,7 +29,7 @@ module.exports = {
   },
 
   getCommentsByPost: (postId) =>
-    Comment.find({ postId, isDeleted: false }),
+    Comment.find({ postId, isDeleted: false }).populate("userId", "username email"),
 
   // replyToComment: (data) => Comment.create(data),
   replyToComment: async (data) => {
