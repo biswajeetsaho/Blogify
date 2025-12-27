@@ -67,6 +67,22 @@ export const signupUser = createAsyncThunk(
     }
 );
 
+export const updateUserTheme = createAsyncThunk(
+    'auth/updateTheme',
+    async (themeData: { backgroundColor: string; fontFamily: string }, { rejectWithValue }) => {
+        try {
+            const { updateUserTheme: updateThemeAPI } = await import('../../api/user');
+            const response = await updateThemeAPI(themeData);
+            return response.data;
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                return rejectWithValue(err.response?.data?.error || 'Failed to update theme');
+            }
+            return rejectWithValue('An unexpected error occurred');
+        }
+    }
+);
+
 const authSlice = createSlice({
     name: 'auth',
     initialState,
@@ -116,12 +132,16 @@ const authSlice = createSlice({
                 state.user = action.payload.user;
                 state.isInitialized = true;
             })
-            .addCase(getProfileUser.rejected, (state) => {
+            .addCase(getProfileUser.rejected, (state, action) => {
                 state.loading = false;
-                state.user = null;
-                state.token = null;
+                state.error = action.payload as string;
                 state.isInitialized = true;
-                localStorage.removeItem('token');
+            })
+            .addCase(updateUserTheme.fulfilled, (state, action) => {
+                // Update user with new theme preferences
+                if (state.user) {
+                    state.user = action.payload;
+                }
             });
     },
 });

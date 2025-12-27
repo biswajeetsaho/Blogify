@@ -1,11 +1,53 @@
-import React from 'react';
-import { Container, Typography, Box, Paper, Avatar, Stack, Divider, Button } from '@mui/material';
-import { useAppSelector } from '../redux/hooks.ts';
+import React, { useEffect, useState } from 'react';
+import { Container, Typography, Box, Paper, Avatar, Stack, Divider, Button, Tabs, Tab } from '@mui/material';
+import { useAppSelector, useAppDispatch } from '../redux/hooks.ts';
+import { fetchUserBlogs } from '../redux/slices/blogSlice.ts';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import BlogCard from '../components/BlogCard';
+import type { Blog, User } from '../components/types';
+
+interface TabPanelProps {
+    children?: React.ReactNode;
+    index: number;
+    value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+    const { children, value, index, ...other } = props;
+
+    return (
+        <div
+            role="tabpanel"
+            hidden={value !== index}
+            id={`simple-tabpanel-${index}`}
+            aria-labelledby={`simple-tab-${index}`}
+            {...other}
+        >
+            {value === index && (
+                <Box sx={{ py: 3 }}>
+                    {children}
+                </Box>
+            )}
+        </div>
+    );
+}
 
 const Profile = () => {
+    const dispatch = useAppDispatch();
     const { user } = useAppSelector((state) => state.auth);
+    const { userBlogs } = useAppSelector((state) => state.blogs);
+    const [value, setValue] = useState(0);
+
+    useEffect(() => {
+        if (user) {
+            dispatch(fetchUserBlogs());
+        }
+    }, [dispatch, user]);
+
+    const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
+        setValue(newValue);
+    };
 
     if (!user) {
         return (
@@ -18,6 +60,23 @@ const Profile = () => {
             </Box>
         );
     }
+
+    const publishedBlogs = userBlogs.filter(b => b.status === 'published');
+    const draftBlogs = userBlogs.filter(b => b.status === 'draft');
+    const scheduledBlogs = userBlogs.filter(b => b.status === 'scheduled');
+
+    const renderBlogList = (blogs: Blog[]) => {
+        if (blogs.length === 0) {
+            return <Typography color="text.secondary">No blogs found in this section.</Typography>;
+        }
+        return (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                {blogs.map((blog) => (
+                    <BlogCard key={blog._id} blog={blog} author={user as unknown as User} />
+                ))}
+            </Box>
+        );
+    };
 
     return (
         <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -53,13 +112,23 @@ const Profile = () => {
 
                     <Divider sx={{ my: 6 }} />
 
-                    <Box>
-                        <Typography variant="h6" fontWeight={700} gutterBottom>
-                            About
-                        </Typography>
-                        <Typography variant="body1" color="text.secondary">
-                            Software developer and tech enthusiast. Sharing insights on modern engineering practices.
-                        </Typography>
+                    <Box sx={{ width: '100%' }}>
+                        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                            <Tabs value={value} onChange={handleChange} aria-label="profile tabs">
+                                <Tab label={`Published (${publishedBlogs.length})`} />
+                                <Tab label={`Drafts (${draftBlogs.length})`} />
+                                <Tab label={`Scheduled (${scheduledBlogs.length})`} />
+                            </Tabs>
+                        </Box>
+                        <TabPanel value={value} index={0}>
+                            {renderBlogList(publishedBlogs)}
+                        </TabPanel>
+                        <TabPanel value={value} index={1}>
+                            {renderBlogList(draftBlogs)}
+                        </TabPanel>
+                        <TabPanel value={value} index={2}>
+                            {renderBlogList(scheduledBlogs)}
+                        </TabPanel>
                     </Box>
                 </Paper>
             </Container>

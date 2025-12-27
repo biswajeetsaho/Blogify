@@ -49,6 +49,14 @@ const searchUsersByUsername = (query) =>
     username: { $regex: query, $options: "i" }
   }).select("username email");
 
+/* THEME UPDATE */
+const updateUserTheme = (userId, themeData) =>
+  User.findByIdAndUpdate(
+    userId,
+    { $set: themeData },
+    { new: true }
+  ).select('-password');
+
 module.exports = {
   // auth
   createUser,
@@ -58,6 +66,9 @@ module.exports = {
   findUserById,
   findUserByUsername,
   searchUsersByUsername,
+
+  // theme
+  updateUserTheme,
 
   // friends
   sendFriendRequestDB,

@@ -6,6 +6,11 @@ export interface User {
   friends: string[]; // Array of User IDs
   sentFriendRequests: string[]; // Array of User IDs
   receivedFriendRequests: string[]; // Array of User IDs
+  themePreferences?: {
+    backgroundColor: string;
+    fontFamily: string;
+    textColor: string;
+  };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -24,9 +29,11 @@ export interface Blog {
   tags: string[]; // Array of Tag names (strings) based on Schema/Seed
   media: Media[];
   likesCount: number;
-  likedUsers: string[]; // Array of User IDs
+  likedUsers: string[]; // Array of user IDs who liked this blog
   commentsCount: number;
   author: string | User; // User ID or populated User object
+  status?: "published" | "draft" | "scheduled";
+  publishedAt?: string;
   createdAt: string;
   updatedAt?: string;
 }
@@ -34,23 +41,55 @@ export interface Blog {
 export interface Category {
   _id: string;
   name: string;
+  creator: string; // User ID
   createdAt?: string;
 }
 
 export interface Tag {
   _id: string;
   name: string;
+  creator: string; // User ID
   createdAt?: string;
 }
 
 export interface Comment {
   _id: string;
-  postId: string; // Blog ID
-  userId: string | User; // User ID or populated User object
+  postId: string;
+  author: string | User;
   content: string;
-  parentCommentId: string | null;
-  upvotes: number;
-  downvotes: number;
-  isDeleted: boolean;
+  likes: string[]; // User IDs
+  dislikes: string[]; // User IDs
+  parentCommentId?: string;
+  replies?: Comment[];
+  isApproved?: boolean;
+  isReported?: boolean;
+  reportReason?: string;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface AnalyticsOverview {
+  totalViews: number;
+  totalLikes: number;
+  totalComments: number;
+  totalBlogs: number;
+  engagementRate: number;
+  avgViewsPerBlog: number;
+}
+
+export interface BlogMetric {
+  id: string;
+  title: string;
+  views: number;
+  likes: number;
+  comments: number;
+  engagementRate: number;
+  createdAt: string;
+  categories: string[];
+}
+
+export interface TrendsData {
+  viewsOverTime: { date: string; count: number }[];
+  categoryPerformance: { category: string; views: number; likes: number; comments: number }[];
+  engagement: { likes: number; comments: number };
 }

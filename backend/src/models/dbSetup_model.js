@@ -18,31 +18,63 @@ const seedDatabase = async () => {
 
   const password = await bcrypt.hash("123456789", 10);
 
+  /* ------------------ USERS ------------------ */
+  const users = await User.insertMany([
+    {
+      username: "john_doe",
+      email: "john@blogify.com",
+      password,
+      themePreferences: { backgroundColor: '#ffffff', fontFamily: 'Inter', textColor: '#000000' }
+    },
+    {
+      username: "jane_smith",
+      email: "jane@blogify.com",
+      password,
+      themePreferences: { backgroundColor: '#f5f5f5', fontFamily: 'Roboto', textColor: '#000000' }
+    },
+    {
+      username: "alex_dev",
+      email: "alex@blogify.com",
+      password,
+      themePreferences: { backgroundColor: '#1a1a1a', fontFamily: 'Poppins', textColor: '#ffffff' }
+    },
+    {
+      username: "sarah_cloud",
+      email: "sarah@blogify.com",
+      password,
+      themePreferences: { backgroundColor: '#e3f2fd', fontFamily: 'Montserrat', textColor: '#000000' }
+    },
+    {
+      username: "mike_logic",
+      email: "mike@blogify.com",
+      password,
+      themePreferences: { backgroundColor: '#ffffff', fontFamily: 'Open Sans', textColor: '#000000' }
+    },
+    {
+      username: "emily_ai",
+      email: "emily@blogify.com",
+      password,
+      themePreferences: { backgroundColor: '#2c3e50', fontFamily: 'Lato', textColor: '#ffffff' }
+    }
+  ]);
+
+  const creatorId = users[0]._id;
+
   /* ------------------ CATEGORIES ------------------ */
   const categories = await Category.insertMany([
-    { name: "Fullstack Development" },
-    { name: "DevOps & Cloud" },
-    { name: "Mobile Engineering" },
-    { name: "AI & Machine Learning" },
-    { name: "Software Architecture" },
-    { name: "Testing & QA" }
+    { name: "Fullstack Development", creator: creatorId },
+    { name: "DevOps & Cloud", creator: creatorId },
+    { name: "Mobile Engineering", creator: creatorId },
+    { name: "AI & Machine Learning", creator: creatorId },
+    { name: "Software Architecture", creator: creatorId },
+    { name: "Testing & QA", creator: creatorId }
   ]);
 
   /* ------------------ TAGS ------------------ */
   const tags = await Tag.insertMany([
-    { name: "React" }, { name: "NodeJS" }, { name: "Docker" },
-    { name: "Kubernetes" }, { name: "Python" }, { name: "TypeScript" },
-    { name: "AWS" }, { name: "GraphQL" }, { name: "CI/CD" }
-  ]);
-
-  /* ------------------ USERS ------------------ */
-  const users = await User.insertMany([
-    { username: "john_doe", email: "john@blogify.com", password },
-    { username: "jane_smith", email: "jane@blogify.com", password },
-    { username: "alex_dev", email: "alex@blogify.com", password },
-    { username: "sarah_cloud", email: "sarah@blogify.com", password },
-    { username: "mike_logic", email: "mike@blogify.com", password },
-    { username: "emily_ai", email: "emily@blogify.com", password }
+    { name: "React", creator: creatorId }, { name: "NodeJS", creator: creatorId }, { name: "Docker", creator: creatorId },
+    { name: "Kubernetes", creator: creatorId }, { name: "Python", creator: creatorId }, { name: "TypeScript", creator: creatorId },
+    { name: "AWS", creator: creatorId }, { name: "GraphQL", creator: creatorId }, { name: "CI/CD", creator: creatorId }
   ]);
 
   /* ------------------ SOCIAL INTERACTIONS (Initial) ------------------ */
@@ -134,6 +166,18 @@ const seedDatabase = async () => {
 
   const createdBlogs = [];
 
+  const localImages = [
+    "/uploads/1766748093724.jpeg",
+    "/uploads/1766752026599.jpg",
+    "/uploads/1766752122610.jpg",
+    "/uploads/1766754016832.jpg",
+    "/uploads/Arrabiatta Penne Cravoo.jpg",
+    "/uploads/Cappucinno Cravoo.jpg",
+    "/uploads/Choco Lava Cake Cravoo.png",
+    "/uploads/Chowmein Cravoo.png",
+    "/uploads/Classic Salted Fries Cravoo.jpg"
+  ];
+
   // Create defined blogs first
   for (const b of blogData) {
     const blog = await Blog.create({
@@ -143,7 +187,9 @@ const seedDatabase = async () => {
       categories: [b.category],
       tags: b.tags,
       author: users[b.authorIdx]._id,
-      media: [{ fileType: "image", filePath: `https://picsum.photos/seed/${b.title}/800/400` }]
+      media: [{ fileType: "image", filePath: getRandom(localImages) }],
+      status: "published",
+      publishedAt: new Date()
     });
     createdBlogs.push(blog);
   }
@@ -162,7 +208,9 @@ const seedDatabase = async () => {
         categories: [getRandom(categories).name],
         tags: [getRandom(tags).name, getRandom(tags).name],
         author: users[i]._id,
-        media: [{ fileType: "image", filePath: `https://picsum.photos/seed/extra-${i}-${j}/800/400` }]
+        media: [{ fileType: "image", filePath: getRandom(localImages) }],
+        status: "published",
+        publishedAt: new Date()
       });
       createdBlogs.push(blog);
     }
@@ -178,7 +226,7 @@ const seedDatabase = async () => {
     // Comments
     const mainComment = await Comment.create({
       postId: blog._id,
-      userId: getRandom(users)._id,
+      author: getRandom(users)._id,
       content: "This is a great read! Really enjoyed the technical depth."
     });
 
@@ -188,7 +236,7 @@ const seedDatabase = async () => {
     // So we use mainComment._id as parent.
     await Comment.create({
       postId: blog._id,
-      userId: users[2]._id,
+      author: users[2]._id,
       content: "I agree with the author, the deep dive section was particularly helpful.",
       parentCommentId: mainComment._id
     });
@@ -196,14 +244,14 @@ const seedDatabase = async () => {
     // Another main comment
     const secondComment = await Comment.create({
       postId: blog._id,
-      userId: getRandom(users)._id,
+      author: getRandom(users)._id,
       content: "Could you expand more on the implementation details?"
     });
 
     // Reply to second comment
     await Comment.create({
       postId: blog._id,
-      userId: getRandom(users)._id,
+      author: getRandom(users)._id,
       content: "I'd also like to see more examples!",
       parentCommentId: secondComment._id
     });

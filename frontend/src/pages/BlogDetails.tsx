@@ -1,34 +1,60 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { trackBlogView } from '../api/analytics';
 import { useEffect, useState } from 'react';
-import { Box, Container, Typography, Avatar, Divider, Button, CardMedia, CircularProgress, Stack, Chip, TextField } from '@mui/material';
-import { ArrowBack as BackIcon, AccessTime as TimeIcon } from '@mui/icons-material';
-import { fetchComments, addComment } from '../redux/slices/blogSlice.ts';
+import { Box, Container, Typography, Avatar, Divider, Button, CardMedia, CircularProgress, Stack, Chip, TextField, IconButton, Tooltip, Menu, MenuItem } from '@mui/material';
+import {
+    ArrowBack as BackIcon,
+    AccessTime as TimeIcon,
+    ThumbUpOutlined as UpvoteIcon,
+    ThumbUp as UpvoteFilledIcon,
+    ThumbDownOutlined as DownvoteIcon,
+    ThumbDown as DownvoteFilledIcon,
+    DeleteOutline as DeleteIcon,
+    FlagOutlined as ReportIcon,
+    CheckCircleOutline as ApproveIcon,
+    MoreVert as MoreIcon,
+    ModeCommentOutlined as ModeCommentOutlinedIcon
+} from '@mui/icons-material';
+import {
+    fetchComments, addComment, upvoteComment, downvoteComment,
+    deleteComment, approveComment, reportComment
+} from '../redux/slices/blogSlice.ts';
 import { useAppDispatch, useAppSelector } from '../redux/hooks.ts';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import type { User, Comment } from '../components/types';
+import AuthModal from '../components/AuthModal.tsx';
+import type { User, Comment, Blog } from '../components/types';
 
 const BlogDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const dispatch = useAppDispatch();
     const { blogs, comments, loading } = useAppSelector((state) => state.blogs);
+    const { user, token } = useAppSelector((state) => state.auth);
+    const isLoggedIn = !!token && !!user;
+
     const [newComment, setNewComment] = useState('');
+    const [authModalOpen, setAuthModalOpen] = useState(false);
 
     useEffect(() => {
         if (id) {
             dispatch(fetchComments(id));
+            trackBlogView(id).catch(console.error);
         }
     }, [dispatch, id]);
 
     const handleMainCommentSubmit = () => {
+        if (!isLoggedIn) {
+            setAuthModalOpen(true);
+            return;
+        }
         if (!newComment.trim() || !id) return;
         dispatch(addComment({ postId: id, content: newComment }));
         setNewComment('');
     };
 
-    const blog = blogs.find((b) => b._id === id);
-    const author = (blog?.author as unknown as User) || { username: 'Unknown Author' };
+    const blog = blogs.find((b) => b._id === id) as Blog | undefined;
+    const author = (typeof blog?.author === 'string' ? { username: 'Unknown Author' } : (blog?.author as unknown as User)) || { username: 'Unknown Author' };
     const image = blog?.media.find((m) => m.fileType === 'image');
 
     if (loading && !blog) {
@@ -71,7 +97,9 @@ const BlogDetails = () => {
                 </Typography>
 
                 <Stack direction="row" spacing={2} alignItems="center" mb={4}>
-                    <Avatar src="" sx={{ width: 48, height: 48 }} />
+                    <Avatar sx={{ width: 48, height: 48, bgcolor: 'secondary.main' }}>
+                        {author?.username?.[0]?.toUpperCase()}
+                    </Avatar>
                     <Box>
                         <Typography variant="subtitle1" fontWeight={700}>
                             {author?.username}
@@ -88,22 +116,20 @@ const BlogDetails = () => {
                 {image && (
                     <CardMedia
                         component="img"
-                        image={image.filePath}
+                        image={image.filePath.startsWith('/uploads') ? `http://localhost:3000${image.filePath}` : image.filePath}
                         alt={blog.title}
                         sx={{ borderRadius: 4, width: '100%', maxHeight: 500, objectFit: 'cover', mb: 6 }}
                     />
                 )}
 
                 <Box sx={{ lineBreak: 'anywhere', '& p': { mb: 2, fontSize: '1.2rem', lineHeight: 1.8 } }}>
-                    <Typography variant="body1" component="div">
-                        {blog.content}
-                    </Typography>
+                    <div dangerouslySetInnerHTML={{ __html: blog.content }} />
                 </Box>
 
                 <Box sx={{ mt: 6, mb: 4 }}>
-                    <Stack direction="row" spacing={1}>
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                         {blog.tags.map((tag) => (
-                            <Chip key={tag} label={`#${tag}`} variant="outlined" />
+                            <Chip key={tag} label={`#${tag}`} variant="outlined" sx={{ mb: 1 }} />
                         ))}
                     </Stack>
                 </Box>
@@ -112,7 +138,7 @@ const BlogDetails = () => {
 
                 {/* Comments Section */}
                 <Typography variant="h5" fontWeight={700} mb={4}>
-                    Comments ({comments.length})
+                    Comments ({blog.commentsCount || 0})
                 </Typography>
 
                 {/* Root Comment Input */}
@@ -124,12 +150,13 @@ const BlogDetails = () => {
                         placeholder="What are your thoughts?"
                         value={newComment}
                         onChange={(e) => setNewComment(e.target.value)}
+                        onClick={() => { if (!isLoggedIn) setAuthModalOpen(true); }}
                         sx={{ mb: 2, bgcolor: 'background.paper' }}
                     />
                     <Button
                         variant="contained"
                         onClick={handleMainCommentSubmit}
-                        disabled={!newComment.trim()}
+                        disabled={!newComment.trim() && isLoggedIn}
                         sx={{ borderRadius: 10, px: 4, textTransform: 'none' }}
                     >
                         Respond
@@ -148,45 +175,90 @@ const BlogDetails = () => {
                                 comment={comment}
                                 replies={comments.filter(r => r.parentCommentId === comment._id)}
                                 isRoot={true}
+                                blogAuthorId={(blog.author as unknown as User)?._id || (blog.author as string)}
+                                onAuthRequired={() => setAuthModalOpen(true)}
                             />
                         ))
                     )}
                 </Stack>
             </Container>
+
+            <AuthModal
+                open={authModalOpen}
+                onClose={() => setAuthModalOpen(false)}
+                initialMode="signin"
+            />
             <Footer />
         </Box>
     );
 };
 
 // --- Comment Thread Component ---
-import ModeCommentOutlinedIcon from '@mui/icons-material/ModeCommentOutlined';
 
-const CommentThread = ({ comment, replies, isRoot = false }: { comment: Comment; replies: Comment[]; isRoot?: boolean }) => {
+interface CommentThreadProps {
+    comment: Comment;
+    replies: Comment[];
+    isRoot?: boolean;
+    blogAuthorId: string;
+    onAuthRequired: () => void;
+}
+
+const CommentThread = ({ comment, replies, isRoot = false, blogAuthorId, onAuthRequired }: CommentThreadProps) => {
     const dispatch = useAppDispatch();
+    const { user, token } = useAppSelector((state) => state.auth);
+    const isLoggedIn = !!token && !!user;
+
     const [showReplies, setShowReplies] = useState(false);
     const [isReplying, setIsReplying] = useState(false);
     const [replyText, setReplyText] = useState('');
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
-    const commenter = comment.userId as unknown as User;
+    const commenter = (typeof comment.author === 'string' ? { username: 'Unknown User' } : (comment.author || { username: 'Unknown User' })) as User;
+    const isBlogOwner = isLoggedIn && user?._id === blogAuthorId;
+    const isCommentAuthor = isLoggedIn && user?._id === (typeof comment.author === 'string' ? comment.author : comment.author?._id);
 
     const handleReplySubmit = () => {
         if (!replyText.trim()) return;
-
-        // Flattening logic: 
-        // If this is a root comment, use its ID.
-        // If this is a reply, use its parentCommentId (which points to the root).
         const parentIdToUse = isRoot ? comment._id : comment.parentCommentId;
-
         dispatch(addComment({
             postId: comment.postId,
             content: replyText,
             parentCommentId: parentIdToUse || undefined
         }));
-
         setReplyText('');
         setIsReplying(false);
         setShowReplies(true);
     };
+
+    const handleUpvote = () => {
+        if (!isLoggedIn) return onAuthRequired();
+        if (isCommentAuthor) return;
+        dispatch(upvoteComment(comment._id));
+    };
+
+    const handleDownvote = () => {
+        if (!isLoggedIn) return onAuthRequired();
+        if (isCommentAuthor) return;
+        dispatch(downvoteComment(comment._id));
+    };
+
+    const handleDelete = () => {
+        dispatch(deleteComment(comment._id));
+        setAnchorEl(null);
+    };
+
+    const handleReport = () => {
+        dispatch(reportComment(comment._id));
+        setAnchorEl(null);
+    };
+
+    const handleApprove = () => {
+        dispatch(approveComment(comment._id));
+        setAnchorEl(null);
+    };
+
+    const hasUpvoted = isLoggedIn && comment.likes?.includes(user?._id || '');
+    const hasDownvoted = isLoggedIn && comment.dislikes?.includes(user?._id || '');
 
     return (
         <Box>
@@ -195,20 +267,92 @@ const CommentThread = ({ comment, replies, isRoot = false }: { comment: Comment;
                     {commenter.username?.[0]?.toUpperCase() || 'U'}
                 </Avatar>
                 <Box flexGrow={1}>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                        <Typography variant="subtitle2" fontWeight={700}>
-                            {commenter.username || 'Unknown User'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                            {new Date(comment.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                        </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                        <Stack direction="row" spacing={1} alignItems="center">
+                            <Typography variant="subtitle2" fontWeight={700}>
+                                {commenter.username || 'Unknown User'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {new Date(comment.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </Typography>
+                            {isBlogOwner && <Chip label="Author" size="small" color="primary" variant="outlined" sx={{ height: 16, fontSize: '0.65rem' }} />}
+                        </Stack>
+
+                        <Box>
+                            {(isBlogOwner || isCommentAuthor) && (
+                                <IconButton size="small" onClick={(e) => setAnchorEl(e.currentTarget)}>
+                                    <MoreIcon fontSize="small" />
+                                </IconButton>
+                            )}
+                            <Menu
+                                anchorEl={anchorEl}
+                                open={Boolean(anchorEl)}
+                                onClose={() => setAnchorEl(null)}
+                            >
+                                {(isBlogOwner || isCommentAuthor) && (
+                                    <MenuItem onClick={handleDelete} sx={{ color: 'error.main' }}>
+                                        <DeleteIcon fontSize="small" sx={{ mr: 1 }} /> Delete
+                                    </MenuItem>
+                                )}
+                                {!comment.isApproved && isBlogOwner && (
+                                    <MenuItem onClick={handleApprove} sx={{ color: 'success.main' }}>
+                                        <ApproveIcon fontSize="small" sx={{ mr: 1 }} /> Approve
+                                    </MenuItem>
+                                )}
+                                <MenuItem onClick={handleReport}>
+                                    <ReportIcon fontSize="small" sx={{ mr: 1 }} /> Report
+                                </MenuItem>
+                            </Menu>
+                        </Box>
                     </Stack>
+
                     <Typography variant="body2" sx={{ mt: 0.5, lineHeight: 1.6 }}>
                         {comment.content}
                     </Typography>
 
                     {/* Actions Row */}
                     <Stack direction="row" spacing={3} mt={1} alignItems="center">
+                        {/* Voting */}
+                        <Stack direction="row" spacing={1.5} alignItems="center">
+                            {/* Upvote */}
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                                <Tooltip title={isCommentAuthor ? "You cannot vote on your own comment" : "Upvote"}>
+                                    <span>
+                                        <IconButton
+                                            size="small"
+                                            onClick={handleUpvote}
+                                            disabled={isCommentAuthor}
+                                            color={hasUpvoted ? "primary" : "default"}
+                                        >
+                                            {hasUpvoted ? <UpvoteFilledIcon fontSize="small" /> : <UpvoteIcon fontSize="small" />}
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
+                                <Typography variant="caption" fontWeight={700}>
+                                    {comment.likes?.length || 0}
+                                </Typography>
+                            </Stack>
+
+                            {/* Downvote */}
+                            <Stack direction="row" spacing={0.5} alignItems="center">
+                                <Tooltip title={isCommentAuthor ? "You cannot vote on your own comment" : "Downvote"}>
+                                    <span>
+                                        <IconButton
+                                            size="small"
+                                            onClick={handleDownvote}
+                                            disabled={isCommentAuthor}
+                                            color={hasDownvoted ? "error" : "default"}
+                                        >
+                                            {hasDownvoted ? <DownvoteFilledIcon fontSize="small" /> : <DownvoteIcon fontSize="small" />}
+                                        </IconButton>
+                                    </span>
+                                </Tooltip>
+                                <Typography variant="caption" fontWeight={700}>
+                                    {comment.dislikes?.length || 0}
+                                </Typography>
+                            </Stack>
+                        </Stack>
+
                         <Stack
                             direction="row"
                             spacing={0.5}
@@ -228,7 +372,10 @@ const CommentThread = ({ comment, replies, isRoot = false }: { comment: Comment;
                             variant="caption"
                             fontWeight={500}
                             sx={{ cursor: 'pointer', color: 'text.secondary', '&:hover': { textDecoration: 'underline' } }}
-                            onClick={() => setIsReplying(!isReplying)}
+                            onClick={() => {
+                                if (!isLoggedIn) return onAuthRequired();
+                                setIsReplying(!isReplying);
+                            }}
                         >
                             Reply
                         </Typography>
@@ -265,6 +412,8 @@ const CommentThread = ({ comment, replies, isRoot = false }: { comment: Comment;
                             comment={reply}
                             replies={[]}
                             isRoot={false}
+                            blogAuthorId={blogAuthorId}
+                            onAuthRequired={onAuthRequired}
                         />
                     ))}
                 </Stack>

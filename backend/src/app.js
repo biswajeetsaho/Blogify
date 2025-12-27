@@ -8,14 +8,15 @@ const blogRoutes = require("./routes/blog_routes");
 const categoryRoutes = require("./routes/category_routes");
 const tagRoutes = require("./routes/tag_routes");
 const commentRoutes = require("./routes/comment_routes");
-const friendRoutes=require("./routes/friend_routes")
-const userRoutes=require("./routes/user_routes")
+const friendRoutes = require("./routes/friend_routes")
+const userRoutes = require("./routes/user_routes")
+const analyticsRoutes = require("./routes/analytics_routes")
 const app = express();
 
 // connectDB();
 connectDB().then(() => {
-    setupDemoData(); // 👈 seed demo data
-  });
+  setupDemoData(); // 👈 seed demo data
+});
 
 app.use(cors());
 app.use(express.json());
@@ -28,6 +29,7 @@ app.use("/api/v1/categories", categoryRoutes);
 app.use("/api/v1/tags", tagRoutes);
 app.use("/api/v1/comments", commentRoutes);
 app.use("/api/v1/friends", friendRoutes);
+app.use("/api/v1/analytics", analyticsRoutes);
 
 
 module.exports = app;

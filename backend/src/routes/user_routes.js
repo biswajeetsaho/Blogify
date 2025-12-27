@@ -9,4 +9,13 @@ router.get("/search", auth, async (req, res) => {
   res.json(users);
 });
 
+router.put("/theme", auth, async (req, res) => {
+  try {
+    const updatedUser = await userService.updateUserTheme(req.userId, req.body);
+    res.json(updatedUser);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 module.exports = router;

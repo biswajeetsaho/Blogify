@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   AppBar,
   Toolbar,
@@ -20,6 +20,8 @@ import {
   Avatar,
   Paper,
   Divider,
+  Snackbar,
+  Alert
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -28,11 +30,15 @@ import {
   Person as UserIcon,
   KeyboardArrowDown as ChevronDownIcon,
   Close as XIcon,
+  Palette as PaletteIcon,
+  Analytics as AnalyticsIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../redux/hooks.ts';
 import { logout } from '../redux/slices/authSlice.ts';
+import { fetchBlogs } from '../redux/slices/blogSlice.ts';
 import AuthModal from './AuthModal.tsx';
+import ThemeCustomizer from './ThemeCustomizer.tsx';
 
 type SearchType = 'blog' | 'friend';
 
@@ -42,7 +48,14 @@ const Navbar = () => {
   const dispatch = useAppDispatch();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, token } = useAppSelector((state) => state.auth);
+  const { blogs } = useAppSelector((state) => state.blogs);
   const isLoggedIn = !!token && !!user;
+
+  useEffect(() => {
+    if (blogs.length === 0) {
+      dispatch(fetchBlogs());
+    }
+  }, [dispatch, blogs.length]);
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,10 +63,15 @@ const Navbar = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [accountAnchorEl, setAccountAnchorEl] = useState<null | HTMLElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
   // Auth Modal State
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authInitialMode, setAuthInitialMode] = useState<'signin' | 'signup'>('signin');
+
+  // Theme Customizer State
+  const [themeCustomizerOpen, setThemeCustomizerOpen] = useState(false);
 
   const handleOpenSearchMenu = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -83,6 +101,12 @@ const Navbar = () => {
     navigate('/profile');
   };
 
+  const handleAnalyticsClick = () => {
+    handleCloseAccountMenu();
+    navigate('/analytics');
+  };
+
+
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
@@ -91,6 +115,41 @@ const Navbar = () => {
     setAuthInitialMode(mode);
     setAuthModalOpen(true);
     setIsMobileMenuOpen(false); // Close mobile menu if open
+  };
+
+  const handleWriteClick = () => {
+    if (isLoggedIn) {
+      navigate('/write');
+    } else {
+      openAuthModal('signin');
+    }
+  };
+
+  const handleSearch = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    if (searchType === 'blog') {
+      const lowerQ = searchQuery.toLowerCase();
+      // Check if any blog matches
+      const hasMatch = blogs.some((blog) => {
+        const titleMatch = blog.title.toLowerCase().includes(lowerQ);
+        const contentMatch = blog.content.replace(/<[^>]+>/g, '').toLowerCase().includes(lowerQ);
+        const categoryMatch = blog.categories?.some(c => c.toLowerCase().includes(lowerQ));
+        const tagMatch = blog.tags?.some(t => t.toLowerCase().includes(lowerQ));
+        return titleMatch || contentMatch || categoryMatch || tagMatch;
+      });
+
+      if (hasMatch) {
+        navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+      } else {
+        setSnackbarMessage('No blog found matching your query.');
+        setSnackbarOpen(true);
+      }
+    } else {
+      setSnackbarMessage('No search match found for friends.');
+      setSnackbarOpen(true);
+    }
   };
 
   const searchOptions: { value: SearchType; label: string }[] = [
@@ -137,6 +196,7 @@ const Navbar = () => {
         {!isMobile && (
           <Paper
             component="form"
+            onSubmit={handleSearch}
             sx={{
               p: '2px 4px',
               display: 'flex',
@@ -162,7 +222,7 @@ const Navbar = () => {
             >
               {searchType === 'blog' ? 'Blog' : 'Friend'}
             </Button>
-            <IconButton type="button" sx={{ p: '10px', bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }} size="small">
+            <IconButton type="submit" sx={{ p: '10px', bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }} size="small">
               <SearchIcon fontSize="small" />
             </IconButton>
             <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => handleCloseSearchMenu()}>
@@ -182,7 +242,12 @@ const Navbar = () => {
         {/* Desktop Actions */}
         {!isMobile && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Button variant="contained" startIcon={<PenSquareIcon />} sx={{ borderRadius: 10, textTransform: 'none' }}>
+            <Button
+              variant="contained"
+              startIcon={<PenSquareIcon />}
+              sx={{ borderRadius: 10, textTransform: 'none' }}
+              onClick={handleWriteClick}
+            >
               Write
             </Button>
             {isLoggedIn ? (
@@ -213,6 +278,18 @@ const Navbar = () => {
                       <UserIcon fontSize="small" />
                     </ListItemIcon>
                     View Profile
+                  </MenuItem>
+                  <MenuItem onClick={handleAnalyticsClick}>
+                    <ListItemIcon>
+                      <AnalyticsIcon fontSize="small" />
+                    </ListItemIcon>
+                    Analytics
+                  </MenuItem>
+                  <MenuItem onClick={() => setThemeCustomizerOpen(true)}>
+                    <ListItemIcon>
+                      <PaletteIcon fontSize="small" />
+                    </ListItemIcon>
+                    Customize Theme
                   </MenuItem>
                   <Divider />
                   <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>
@@ -250,6 +327,7 @@ const Navbar = () => {
           {/* Mobile Search */}
           <Paper
             component="form"
+            onSubmit={handleSearch}
             sx={{
               p: '2px 4px',
               display: 'flex',
@@ -282,14 +360,17 @@ const Navbar = () => {
               <option value="blog">Blog</option>
               <option value="friend">Friend</option>
             </select>
-            <IconButton type="button" sx={{ p: '10px', bgcolor: 'primary.main', color: 'white' }} size="small">
+            <IconButton type="submit" sx={{ p: '10px', bgcolor: 'primary.main', color: 'white' }} size="small">
               <SearchIcon fontSize="small" />
             </IconButton>
           </Paper>
 
           <List>
             <ListItem disablePadding sx={{ mb: 1 }}>
-              <ListItemButton sx={{ borderRadius: 1, bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}>
+              <ListItemButton
+                onClick={handleWriteClick}
+                sx={{ borderRadius: 1, bgcolor: 'primary.main', color: 'white', '&:hover': { bgcolor: 'primary.dark' } }}
+              >
                 <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
                   <PenSquareIcon fontSize="small" />
                 </ListItemIcon>
@@ -338,6 +419,24 @@ const Navbar = () => {
         open={authModalOpen}
         onClose={() => setAuthModalOpen(false)}
         initialMode={authInitialMode}
+      />
+
+      {/* Search Toast */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={() => setSnackbarOpen(false)} severity="info" sx={{ width: '100%' }}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+
+      {/* Theme Customizer */}
+      <ThemeCustomizer
+        open={themeCustomizerOpen}
+        onClose={() => setThemeCustomizerOpen(false)}
       />
     </AppBar>
   );

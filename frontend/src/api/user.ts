@@ -8,3 +8,7 @@ export const sendFriendRequest = (userId: string) =>
 
 export const acceptFriendRequest = (userId: string) =>
   api.post(`/friends/accept/${userId}`);
+
+export const updateUserTheme = (themeData: { backgroundColor: string; fontFamily: string }) =>
+  api.put("/users/theme", themeData);
+

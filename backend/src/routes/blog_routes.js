@@ -8,7 +8,15 @@ const {
   searchBlogService,
   fetchCategoriesService,
   fetchTagsService,
-  likeBlogService
+  likeBlogService,
+  fetchUserBlogsService,
+  // New Services
+  createCategoryService,
+  updateCategoryService,
+  deleteCategoryService,
+  createTagService,
+  updateTagService,
+  deleteTagService
 } = require("../services/blog_service");
 const upload = require("../middlewares/upload_middleware");
 
@@ -54,6 +62,15 @@ router.get("/", async (req, res) => {
   res.json(blogs);
 });
 
+router.get("/my-blogs", authMiddleware, async (req, res) => {
+  try {
+    const blogs = await fetchUserBlogsService(req.userId);
+    res.json(blogs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const blog = await updateBlogService(
@@ -92,6 +109,33 @@ router.get("/categories/all", async (req, res) => {
   }
 });
 
+router.post("/categories", authMiddleware, async (req, res) => {
+  try {
+    const category = await createCategoryService(req.body.name, req.userId);
+    res.status(201).json(category);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put("/categories/:id", authMiddleware, async (req, res) => {
+  try {
+    const category = await updateCategoryService(req.params.id, req.body.name, req.userId);
+    res.json(category);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete("/categories/:id", authMiddleware, async (req, res) => {
+  try {
+    await deleteCategoryService(req.params.id, req.userId);
+    res.json({ message: "Category deleted successfully" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 /* GET ALL TAGS */
 router.get("/tags/all", async (req, res) => {
   try {
@@ -99,6 +143,33 @@ router.get("/tags/all", async (req, res) => {
     res.json(tags);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+router.post("/tags", authMiddleware, async (req, res) => {
+  try {
+    const tag = await createTagService(req.body.name, req.userId);
+    res.status(201).json(tag);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put("/tags/:id", authMiddleware, async (req, res) => {
+  try {
+    const tag = await updateTagService(req.params.id, req.body.name, req.userId);
+    res.json(tag);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete("/tags/:id", authMiddleware, async (req, res) => {
+  try {
+    await deleteTagService(req.params.id, req.userId);
+    res.json({ message: "Tag deleted successfully" });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 

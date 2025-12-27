@@ -9,11 +9,11 @@ interface CategorySliderProps {
 }
 
 const CategorySlider = ({ categories, selected, onSelect }: CategorySliderProps) => (
-  <Box sx={{ overflowX: 'auto', py: 2, px: 1, bgcolor: 'background.paper' }}>
+  <Box sx={{ overflowX: 'auto', py:2, px: 20, bgcolor: 'background.paper' }}>
     <Stack direction="row" spacing={1}>
       <Chip
         icon={<AddIcon />}
-        label="Add Category"
+        label="All Category"
         color="primary"
         clickable
         onClick={() => onSelect(null)}

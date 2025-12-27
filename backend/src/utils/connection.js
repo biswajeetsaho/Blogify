@@ -41,7 +41,23 @@ const userSchema = new mongoose.Schema(
 
     receivedFriendRequests: [
       { type: mongoose.Schema.Types.ObjectId, ref: "User" }
-    ]
+    ],
+
+    /* THEME PREFERENCES */
+    themePreferences: {
+      backgroundColor: {
+        type: String,
+        default: '#ffffff'
+      },
+      fontFamily: {
+        type: String,
+        default: 'Inter'
+      },
+      textColor: {
+        type: String,
+        default: '#000000'
+      }
+    }
   },
   { timestamps: true }
 );
@@ -106,10 +122,36 @@ const blogSchema = new mongoose.Schema(
       default: 0
     },
 
+    /* 🔹 ANALYTICS */
+    analytics: {
+      views: {
+        type: Number,
+        default: 0
+      },
+      uniqueViewers: {
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: "User",
+        default: []
+      },
+      viewHistory: [{
+        date: { type: Date, default: Date.now },
+        count: { type: Number, default: 1 }
+      }]
+    },
+
     author: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true
+    },
+    status: {
+      type: String,
+      enum: ["draft", "published", "scheduled"],
+      default: "published"
+    },
+    publishedAt: {
+      type: Date,
+      default: Date.now
     }
   },
   { timestamps: true }
@@ -119,7 +161,8 @@ const blogSchema = new mongoose.Schema(
 /* CATEGORY SCHEMA */
 const categorySchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, unique: true }
+    name: { type: String, required: true, unique: true },
+    creator: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
   },
   { timestamps: true }
 );
@@ -127,7 +170,8 @@ const categorySchema = new mongoose.Schema(
 /* TAG SCHEMA */
 const tagSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, unique: true }
+    name: { type: String, required: true, unique: true },
+    creator: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true }
   },
   { timestamps: true }
 );
@@ -139,10 +183,10 @@ const tagSchema = new mongoose.Schema(
 const commentSchema = new mongoose.Schema({
   postId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "Post",
+    ref: "Blog",
     required: true
   },
-  userId: {
+  author: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",
     required: true
@@ -156,11 +200,17 @@ const commentSchema = new mongoose.Schema({
     ref: "Comment",
     default: null   // null = top-level comment
   },
-  upvotes: {
-    type: Number,
-    default: 0
+  likes: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+  ],
+  dislikes: [
+    { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+  ],
+  isApproved: {
+    type: Boolean,
+    default: true
   },
-  downvotes: {
+  reports: {
     type: Number,
     default: 0
   },
