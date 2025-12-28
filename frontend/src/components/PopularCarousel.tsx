@@ -13,6 +13,7 @@ import {
 import { useRef } from 'react';
 import { useAppDispatch, useAppSelector } from '../redux/hooks';
 import { toggleLikeBlog } from '../redux/slices/blogSlice';
+import { setSharingBlogId } from '../redux/slices/friendSlice';
 import type { Blog, User } from './types';
 
 interface PopularCarouselProps {
@@ -208,7 +209,7 @@ const PopularCarousel = ({ blogs }: PopularCarouselProps) => {
                           sx={{ color: 'text.secondary' }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            // Share functionality later
+                            dispatch(setSharingBlogId(blog._id));
                           }}
                         >
                           <ShareIcon fontSize="small" />

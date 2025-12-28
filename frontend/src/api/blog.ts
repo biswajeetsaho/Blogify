@@ -52,6 +52,16 @@ export const createBlog = (formData: FormData) =>
     },
   });
 
+export const updateBlog = (id: string, formData: FormData) =>
+  api.put(`/posts/${id}`, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+
+export const deleteBlog = (id: string) =>
+  api.delete(`/posts/${id}`);
+
 export const getBlogById = (id: string) =>
   api.get(`/posts/${id}`);
 

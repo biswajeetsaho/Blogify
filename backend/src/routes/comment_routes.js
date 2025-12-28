@@ -1,31 +1,3 @@
-// const express = require("express");
-// const authMiddleware = require("../middlewares/auth_middleware");
-// const {
-//   addCommentService,
-//   getCommentsService
-// } = require("../services/comment_service");
-
-// const router = express.Router();
-
-// router.post("/:blogId", authMiddleware, async (req, res) => {
-//   try {
-//     const comment = await addCommentService(
-//       req.body.content,
-//       req.params.blogId,
-//       req.userId
-//     );
-//     res.status(201).json(comment);
-//   } catch (err) {
-//     res.status(400).json({ error: err.message });
-//   }
-// });
-
-// router.get("/:blogId", async (req, res) => {
-//   const comments = await getCommentsService(req.params.blogId);
-//   res.json(comments);
-// });
-
-// module.exports = router;
 
 
 const express = require("express");

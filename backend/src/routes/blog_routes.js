@@ -71,11 +71,44 @@ router.get("/my-blogs", authMiddleware, async (req, res) => {
   }
 });
 
-router.put("/:id", authMiddleware, async (req, res) => {
+router.put("/:id", authMiddleware, upload.array("media", 5), async (req, res) => {
   try {
+    let finalMedia = [];
+
+    // 1. Process existing media
+    if (req.body.existingMedia) {
+      try {
+        finalMedia = JSON.parse(req.body.existingMedia);
+      } catch (e) {
+        console.error("Error parsing existingMedia", e);
+      }
+    }
+
+    // 2. Process new media
+    if (req.files && req.files.length > 0) {
+      const newMediaFiles = req.files.map(file => ({
+        fileType: file.mimetype.startsWith("image") ? "image" : "video",
+        filePath: `/uploads/${file.filename}`
+      }));
+      finalMedia = [...finalMedia, ...newMediaFiles];
+    }
+
+    // If we only have new files and no existingMedia field, it might mean we didn't send existingMedia?
+    // But we always send it. If we are updating content but not media, existingMedia should be passed as is.
+    // If we don't pass 'media' field to updateBlogService, it might not update it (depending on how updateBlogById works).
+    // Let's assume if finalMedia is empty and we didn't intend to delete everything, we might issue.
+    // But logic: if existingMedia is sent (even empty), we respect it.
+
+    // Prepare update data
+    const updateData = { ...req.body };
+    // Only update media if we have some intent (either existingMedia sent or new files sent)
+    if (req.body.existingMedia || (req.files && req.files.length > 0)) {
+      updateData.media = finalMedia;
+    }
+
     const blog = await updateBlogService(
       req.params.id,
-      req.body,
+      updateData,
       req.userId
     );
     res.json(blog);

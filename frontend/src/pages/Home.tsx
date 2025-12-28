@@ -8,6 +8,7 @@ import CategorySlider from '../components/CategorySlider';
 import PopularCarousel from '../components/PopularCarousel';
 import FeaturedBlog from '../components/FeaturedBlog';
 import BlogCard from '../components/BlogCard';
+import PeopleCarousel from '../components/PeopleCarousel';
 import Footer from '../components/Footer';
 import type { Blog, User, Category } from '../components/types';
 
@@ -122,16 +123,8 @@ const Home = () => {
             Explore More
           </Button>
         </Box>
-        {/* Section C: 4 BlogCards */}
-        <Box sx={{ display: 'flex', gap: 2, mt: 4, mb: 10 }}>
-          {filteredBlogs.slice(8, 12).map((blog: Blog) => (
-            <BlogCard
-              key={blog._id}
-              blog={blog}
-              author={blog.author as unknown as User}
-            />
-          ))}
-        </Box>
+        {/* People You May Know Carousel */}
+        <PeopleCarousel />
       </Container>
       <Footer />
     </Box>

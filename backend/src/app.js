@@ -11,6 +11,7 @@ const commentRoutes = require("./routes/comment_routes");
 const friendRoutes = require("./routes/friend_routes")
 const userRoutes = require("./routes/user_routes")
 const analyticsRoutes = require("./routes/analytics_routes")
+const messageRoutes = require("./routes/message_routes")
 const app = express();
 
 // connectDB();
@@ -30,6 +31,7 @@ app.use("/api/v1/tags", tagRoutes);
 app.use("/api/v1/comments", commentRoutes);
 app.use("/api/v1/friends", friendRoutes);
 app.use("/api/v1/analytics", analyticsRoutes);
+app.use("/api/v1/messages", messageRoutes);
 
 
 module.exports = app;

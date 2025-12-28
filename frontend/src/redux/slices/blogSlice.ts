@@ -8,7 +8,9 @@ import {
     upvoteComment as upvoteCommentApi, downvoteComment as downvoteCommentApi,
     deleteComment as deleteCommentApi, approveComment as approveCommentApi,
     reportComment as reportCommentApi, replyToComment as replyToCommentApi,
-    likeBlog as likeBlogApi
+    likeBlog as likeBlogApi,
+    updateBlog as updateBlogApi,
+    deleteBlog as deleteBlogApi
 } from '../../api/blog';
 import axios from 'axios';
 
@@ -222,6 +224,36 @@ export const toggleLikeBlog = createAsyncThunk(
     }
 );
 
+export const updateBlog = createAsyncThunk(
+    'blogs/update',
+    async ({ id, formData }: { id: string; formData: FormData }, { rejectWithValue }) => {
+        try {
+            const response = await updateBlogApi(id, formData);
+            return response.data;
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                return rejectWithValue(err.response?.data?.error || err.message || 'Failed to update blog');
+            }
+            return rejectWithValue('An unexpected error occurred');
+        }
+    }
+);
+
+export const deleteBlog = createAsyncThunk(
+    'blogs/delete',
+    async (id: string, { rejectWithValue }) => {
+        try {
+            await deleteBlogApi(id);
+            return id;
+        } catch (err: unknown) {
+            if (axios.isAxiosError(err)) {
+                return rejectWithValue(err.response?.data?.error || err.message || 'Failed to delete blog');
+            }
+            return rejectWithValue('An unexpected error occurred');
+        }
+    }
+);
+
 
 
 
@@ -404,6 +436,19 @@ const blogSlice = createSlice({
                 if (userBlogIndex !== -1) {
                     state.userBlogs[userBlogIndex] = action.payload;
                 }
+                if (userBlogIndex !== -1) {
+                    state.userBlogs[userBlogIndex] = action.payload;
+                }
+            })
+            .addCase(updateBlog.fulfilled, (state, action) => {
+                const index = state.blogs.findIndex(b => b._id === action.payload._id);
+                if (index !== -1) state.blogs[index] = action.payload;
+                const userIndex = state.userBlogs.findIndex(b => b._id === action.payload._id);
+                if (userIndex !== -1) state.userBlogs[userIndex] = action.payload;
+            })
+            .addCase(deleteBlog.fulfilled, (state, action) => {
+                state.blogs = state.blogs.filter(b => b._id !== action.payload);
+                state.userBlogs = state.userBlogs.filter(b => b._id !== action.payload);
             });
     },
 });

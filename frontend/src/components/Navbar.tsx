@@ -39,6 +39,7 @@ import { logout } from '../redux/slices/authSlice.ts';
 import { fetchBlogs } from '../redux/slices/blogSlice.ts';
 import AuthModal from './AuthModal.tsx';
 import ThemeCustomizer from './ThemeCustomizer.tsx';
+import FriendsDrawer from './FriendsDrawer.tsx';
 
 type SearchType = 'blog' | 'friend';
 
@@ -49,6 +50,7 @@ const Navbar = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, token } = useAppSelector((state) => state.auth);
   const { blogs } = useAppSelector((state) => state.blogs);
+  const { sharingBlogId } = useAppSelector((state) => state.friends);
   const isLoggedIn = !!token && !!user;
 
   useEffect(() => {
@@ -56,6 +58,13 @@ const Navbar = () => {
       dispatch(fetchBlogs());
     }
   }, [dispatch, blogs.length]);
+
+  // Auto-open drawer when sharing a blog
+  useEffect(() => {
+    if (sharingBlogId) {
+      setFriendsDrawerOpen(true);
+    }
+  }, [sharingBlogId]);
 
   // State
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +78,7 @@ const Navbar = () => {
   // Auth Modal State
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authInitialMode, setAuthInitialMode] = useState<'signin' | 'signup'>('signin');
+  const [friendsDrawerOpen, setFriendsDrawerOpen] = useState(false);
 
   // Theme Customizer State
   const [themeCustomizerOpen, setThemeCustomizerOpen] = useState(false);
@@ -252,6 +262,10 @@ const Navbar = () => {
             </Button>
             {isLoggedIn ? (
               <>
+                <IconButton onClick={() => setFriendsDrawerOpen(true)} title="Friends">
+                  <UserIcon />
+                  {/* Or simple badge if we had count */}
+                </IconButton>
                 <IconButton size="small" onClick={handleOpenAccountMenu}>
                   <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.light', color: 'primary.contrastText', fontSize: '0.875rem' }}>
                     {user?.username?.[0]?.toUpperCase() || <UserIcon fontSize="small" />}
@@ -420,6 +434,8 @@ const Navbar = () => {
         onClose={() => setAuthModalOpen(false)}
         initialMode={authInitialMode}
       />
+
+      <FriendsDrawer open={friendsDrawerOpen} onClose={() => setFriendsDrawerOpen(false)} />
 
       {/* Search Toast */}
       <Snackbar

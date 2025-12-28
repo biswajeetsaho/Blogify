@@ -34,8 +34,8 @@ import {
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
 import { useAppDispatch, useAppSelector } from '../redux/hooks.ts';
-import { createBlog, fetchCategories, fetchTags, createCategory, createTag } from '../redux/slices/blogSlice.ts';
-import { useNavigate } from 'react-router-dom';
+import { createBlog, updateBlog, fetchCategories, fetchTags, createCategory, createTag } from '../redux/slices/blogSlice.ts';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import CategoryTagManager from '../components/CategoryTagManager';
@@ -57,6 +57,10 @@ const Write = () => {
     const [previews, setPreviews] = useState<string[]>([]);
     const [status, setStatus] = useState<'published' | 'draft' | 'scheduled'>('published');
     const [scheduledDate, setScheduledDate] = useState('');
+    const [existingBlogId, setExistingBlogId] = useState<string | null>(null);
+    const [existingMedia, setExistingMedia] = useState<any[]>([]); // To store existing media objects
+
+    const location = useLocation();
 
     const [tabIndex, setTabIndex] = useState(0); // 0 for Edit, 1 for Preview
     const [managerOpen, setManagerOpen] = useState(false);
@@ -66,7 +70,27 @@ const Write = () => {
     useEffect(() => {
         if (allCategories.length === 0) dispatch(fetchCategories());
         if (allTags.length === 0) dispatch(fetchTags());
-    }, [dispatch, allCategories.length, allTags.length]);
+
+        if (location.state?.editBlog) {
+            const blog = location.state.editBlog;
+            setExistingBlogId(blog._id);
+            setTitle(blog.title);
+            setSubtitle(blog.subtitle || '');
+            setContent(blog.content);
+            setStatus(blog.status);
+            if (blog.categories) setSelectedCategories(blog.categories.map((c: any) => c.name));
+            if (blog.tags) setSelectedTags(blog.tags.map((t: any) => t.name || t)); // Handle populated or string tags
+            // Note: Media files cannot be easily pre-filled into File[], so we rely on existing previews or logic.
+            // For simplicity in this demo, we might not show existing media in the file input, but we could show them in previews.
+            if (blog.media && blog.media.length > 0) {
+                setExistingMedia(blog.media);
+                const existingPreviews = blog.media.map((m: any) =>
+                    m.filePath.startsWith('/uploads') ? `http://localhost:3000${m.filePath}` : m.filePath
+                );
+                setPreviews(existingPreviews);
+            }
+        }
+    }, [dispatch, allCategories.length, allTags.length, location.state]);
 
     const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -79,8 +103,16 @@ const Write = () => {
     };
 
     const removeMedia = (index: number) => {
-        setMediaFiles((prev) => prev.filter((_, i) => i !== index));
-        URL.revokeObjectURL(previews[index]);
+        if (index < existingMedia.length) {
+            setExistingMedia((prev) => prev.filter((_, i) => i !== index));
+        } else {
+            const fileIndex = index - existingMedia.length;
+            setMediaFiles((prev) => prev.filter((_, i) => i !== fileIndex));
+        }
+
+        if (previews[index] && previews[index].startsWith('blob:')) {
+            URL.revokeObjectURL(previews[index]);
+        }
         setPreviews((prev) => prev.filter((_, i) => i !== index));
     };
 
@@ -148,10 +180,27 @@ const Write = () => {
         });
 
         try {
-            await dispatch(createBlog(formData)).unwrap();
+            if (existingBlogId) {
+                // Update
+                // Send existing media as JSON
+                formData.append('existingMedia', JSON.stringify(existingMedia));
+
+                if (mediaFiles.length > 0) {
+                    mediaFiles.forEach((file) => {
+                        formData.append('media', file);
+                    });
+                }
+                await dispatch(updateBlog({ id: existingBlogId, formData })).unwrap();
+            } else {
+                // Create
+                mediaFiles.forEach((file) => {
+                    formData.append('media', file);
+                });
+                await dispatch(createBlog(formData)).unwrap();
+            }
             navigate('/');
         } catch (err: any) {
-            setError(err || 'Failed to publish blog');
+            setError(err || 'Failed to save blog');
         } finally {
             setLoading(false);
         }
@@ -295,24 +344,36 @@ const Write = () => {
                                     >
                                         Add
                                     </Button>
-                                    {previews.map((url, index) => (
-                                        <Box key={index} position="relative">
-                                            <Card sx={{ width: 100, height: 100 }}>
-                                                <CardMedia
-                                                    component={mediaFiles[index].type.startsWith('video') ? 'video' : 'img'}
-                                                    src={url}
-                                                    sx={{ height: '100%', objectFit: 'cover' }}
-                                                />
-                                            </Card>
-                                            <IconButton
-                                                size="small"
-                                                sx={{ position: 'absolute', top: -10, right: -10, bgcolor: 'background.paper' }}
-                                                onClick={() => removeMedia(index)}
-                                            >
-                                                <RemoveIcon color="error" />
-                                            </IconButton>
-                                        </Box>
-                                    ))}
+                                    {previews.map((url, index) => {
+                                        let isVideo = false;
+                                        if (index < existingMedia.length) {
+                                            isVideo = existingMedia[index].fileType === 'video';
+                                        } else {
+                                            const fileIndex = index - existingMedia.length;
+                                            if (mediaFiles[fileIndex]) {
+                                                isVideo = mediaFiles[fileIndex].type.startsWith('video');
+                                            }
+                                        }
+
+                                        return (
+                                            <Box key={index} position="relative">
+                                                <Card sx={{ width: 100, height: 100 }}>
+                                                    <CardMedia
+                                                        component={isVideo ? 'video' : 'img'}
+                                                        src={url}
+                                                        sx={{ height: '100%', objectFit: 'cover' }}
+                                                    />
+                                                </Card>
+                                                <IconButton
+                                                    size="small"
+                                                    sx={{ position: 'absolute', top: -10, right: -10, bgcolor: 'background.paper' }}
+                                                    onClick={() => removeMedia(index)}
+                                                >
+                                                    <RemoveIcon color="error" />
+                                                </IconButton>
+                                            </Box>
+                                        )
+                                    })}
                                 </Box>
                             </Box>
 
@@ -352,7 +413,9 @@ const Write = () => {
                                     onClick={handlePublish}
                                     disabled={loading}
                                 >
-                                    {loading ? <CircularProgress size={24} /> : (status === 'scheduled' ? 'Schedule' : 'Publish')}
+                                    {loading ? <CircularProgress size={24} /> : (
+                                        existingBlogId ? 'Update' : (status === 'scheduled' ? 'Schedule' : 'Publish')
+                                    )}
                                 </Button>
                             </Stack>
                         </Stack>
@@ -371,7 +434,14 @@ const Write = () => {
                                     sx={{ maxHeight: 400, borderRadius: 2, my: 4 }}
                                 />
                             )}
-                            <div dangerouslySetInnerHTML={{ __html: content }} />
+                            <Box sx={{
+                                '& img': { maxWidth: '100%', height: 'auto' },
+                                wordBreak: 'break-word',
+                                overflowWrap: 'break-word',
+                                '& pre': { whiteSpace: 'pre-wrap', wordBreak: 'break-all' }
+                            }}>
+                                <div dangerouslySetInnerHTML={{ __html: content }} />
+                            </Box>
                         </Box>
                     )}
                 </Paper>
